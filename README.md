@@ -114,14 +114,15 @@ module tn_julia
 
 end
 ```
-In theory, you could write your code directly into this file, but that is *generally a bad idea*: The file will quickly grow to contain multiple thousand lines and become unreadable. Instead, separate your code into small files that each supply one specific set of function definitions. For example, you might have a file `src/contractions.jl` that deals with tensor contractions. Then, include that file in `src/tn_julia.jl` as follows:
+In theory, you could write your code directly into this file, but that is *generally a bad idea*: The file will quickly grow to contain multiple thousand lines and become unreadable. Instead, separate your code into small files that each supply one specific set of function definitions. For example, you might have a file `src/gaussian.jl` that contains a gaussian function. Then, include that file in `src/tn_julia.jl` as follows:
 ```julia
 module tn_julia
 
-include("contractions.jl")
+include("gaussian.jl")
 # ... other includes ...
 
 end
+
 ```
 
 If you need functionality from other packages, such as `LinearAlgebra` or `JLD2`, you have to import them at the top of your file, like this:
@@ -136,24 +137,32 @@ module tn_julia
 using LinearAlgebra
 using JLD2
 
-include("contractions.jl")
+include("gaussian.jl")
 # ... other includes ...
 
 end
 ```
 
 ### Unit tests file
-To perform unit tests, you need to import `Test`, and the file that defines those functions you're going to test. The basic structure looks like this:
+To perform unit tests, you need to import `Test`, and the file that defines those functions you're going to test. Similar to the contents of `src/`, we will subdivide the tests into multiple files, where each file tests a particular set of features, and have a "main" file `runtests.jl`, which includes all others. For example:
 ```julia
+using tn_julia
 using Test
-import tn_julia
 
-@testset "Name of testset" begin
-    A = rand(10, 10)
-    B = rand(10, 10)
+include("test_gaussian.jl")
+```
+The file `test_gaussian.jl` contains the following:
+```julia
+import tn_julia: gaussian
 
-    @test contract(A, [2], B, [1]) == A * B
+@testset "Basic properties of a gaussian" begin
+    @test gaussian(0.0) == 1
+    @test gaussian(1.0) == exp(-1.0)
+    for x in 0:0.1:1
+        @test gaussian(x) == gaussian(-x)
+    end
 end
+
 ```
 Group your `@test`s into multiple `@testset`s to test multiple sets of functions. More details will be shown during the tutorial.
 
@@ -162,13 +171,11 @@ Your script file has to import your function definitions, and potentially additi
 ```julia
 using Plots
 using LaTeXStrings
-using JLD2
 
-import tn_julia
+import tn_julia: gaussian
 
-# write code here
-x = -3:0.1:3
-plot(x, tn_julia.somefunction.(x), xlabel=L"x", ylabel=L"g(x)")
+xvals = -3:0.1:3
+plot(xvals, gaussian.(xvals), xlabel=L"x", ylabel=L"g(x)")
 ```
 Generally, most non-trivial code is useful in more than one place. Therefore, you should get into the habit of writing the non-trivial parts as functions, and then assemble those functions to a complete program. That way, your function can be re-used in a different place, and you don't end up solving the same problems over and over again.
 
