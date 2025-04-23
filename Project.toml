@@ -1,0 +1,13 @@
+name = "tn_julia"
+uuid = "d46e0379-52b9-405d-b00f-50fb40aa6c6b"
+authors = ["Simone.Fodera@lmu.de", "Ming.Huang@lmu.de", "O.Kovalska@lmu.de", "Ritter.Marc@lmu.de", "vondelft@lmu.de", "Changkai.Zhang@lmu.de"]
+version = "25.0.1"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
