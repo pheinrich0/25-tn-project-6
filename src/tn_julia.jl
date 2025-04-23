@@ -1,5 +1,5 @@
 module tn_julia
 
-# Write your package code here.
+include("gaussian.jl")
 
 end
