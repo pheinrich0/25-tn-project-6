@@ -1,3 +1,4 @@
+using Test
 import tn_julia: gaussian
 
 @testset "Basic properties of a gaussian" begin
