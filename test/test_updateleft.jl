@@ -1,7 +1,22 @@
 using Test
 import tn_julia: updateLeft
 
-@testset "updateLeft" begin
+@testset "updateLeft dimensions" begin
+    D = 4
+    w = 2
+    d = 3
+
+    A = ones(D, d, D)
+    C = ones(D, w, D)
+    X = ones(w, d, w, d)
+
+    Cnew = updateLeft(C, A, X, A)
+    @test size(Cnew) == (D, w, D)
+    @test all(Cnew .== D^2 * w * d^2)
+end
+
+@testset "updateLeft applied to isometry" begin
+    # This is a randomly generated isometry.
     U = [
         -0.254305-0.232958im   0.157915+0.161259im  -0.0210839-0.373337im       0.18934+0.238625im    0.0330388+0.563119im    -0.254522-0.121703im    0.166111-0.174974im  0.0454926-0.37341im
         -0.167682-0.260876im  -0.217791+0.452701im  0.00655978+0.281734im     -0.101294-0.189124im    -0.122316+0.288483im   -0.0162223+0.20048im     0.141277-0.190769im  -0.415862+0.397589im
