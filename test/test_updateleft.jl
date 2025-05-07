@@ -2,14 +2,15 @@ using Test
 using LinearAlgebra
 import tn_julia: updateLeft
 
-@testset "updateLeft dimensions" begin
-    D = 4
-    w = 2
-    d = 3
+@testset "updateLeft" begin
+    @testset "updateLeft dimensions" begin
+        D = 4
+        w = 2
+        d = 3
 
-    A = ones(D, d, D)
-    C = ones(D, w, D)
-    X = ones(w, d, w, d)
+        A = ones(D, d, D)
+        C = ones(D, w, D)
+        X = ones(w, d, w, d)
 
         Cnew = updateLeft(C, A, X, A)
         @test size(Cnew) == (D, w, D)
