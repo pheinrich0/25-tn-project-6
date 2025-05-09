@@ -30,7 +30,7 @@ function spinlocalspace(spin::Rational=1 // 2)
     ) / sqrt(2)
 
     Sz = diagm(Float64.(spinvals))
-    Id = I(Int(2spin + 1))
+    Id = identity(Sz, 1)
 
     return Splus, Sminus, Sz, Id
 end
