@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import tn_julia: identity, contract
+import tn_julia: contract
 import Random
 
 # Set the random seed for reproducibility
@@ -12,14 +12,14 @@ Random.seed!(1234)
         A = rand(3, 4, 5)
 
         for leg in ndims(A)
-            @test contract(A, [leg], identity(A, leg), [1]) == A
+            @test contract(A, [leg], tn_julia.identity(A, leg), [1]) == A
         end
     end
 
     @testset "3-leg identity" begin
         A = rand(3, 4, 5)
         C = I(2)
-        B = identity(A, 3, C, 2)
+        B = tn_julia.identity(A, 3, C, 2)
 
         ABC = contract(
             A, [3],
