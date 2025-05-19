@@ -1,3 +1,23 @@
+"""
+    svd(
+        T::AbstractArray{ValueType}, indicesU::AbstractVector{Int};
+        Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+    )
+
+Computes the SVD of tensor T, with arbitrary assignment of legs to U and V.
+
+Input:
+- `T`: the tensor to be decomposed.
+- `indicesU`: legs of T to be assigned to U.
+- `Nkeep`: maximum number of singular values to keep. Default is `typemax(Int)`.
+- `tolerance`: minimum magnitude of singular value to keep. Default is `0.0`.
+
+Output:
+- `U`: the left singular vectors of T, with legs given in `indicesU`.
+- `S`: the singular values of T, in decreasing order.
+- `Vd`: the right singular vectors of T.
+- `discardedweight`: the sum of the squares of the singular values that were discarded.
+"""
 function svd(
     T::AbstractArray{ValueType}, indicesU::AbstractVector{Int};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
