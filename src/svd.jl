@@ -47,7 +47,21 @@ function svd(
     return (U, S, Vd, discardedweight)
 end
 
-function svdleft(
+"""
+    svdright(
+        T::AbstractArray{ValueType};
+        Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+    )
+
+Computes the right singular vectors of tensor T.
+Input:
+- `T`: the tensor to be decomposed.
+- `Nkeep`: maximum number of singular values to keep. Default is `typemax(Int)`.
+- `tolerance`: minimum magnitude of singular value to keep. Default is `0.0`.
+Output:
+`Lambda` and `B`, such that `T = Lambda * B`, and `B` contains the right singular vectors.
+"""
+function svdright(
     T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
 )
@@ -55,7 +69,20 @@ function svdleft(
     return U * Diagonal(S), Vd
 end
 
-function svdright(
+"""
+    svdleft(
+        T::AbstractArray{ValueType};
+        Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+    )
+Computes the left singular vectors of tensor T.
+Input:
+- `T`: the tensor to be decomposed.
+- `Nkeep`: maximum number of singular values to keep. Default is `typemax(Int)`.
+- `tolerance`: minimum magnitude of singular value to keep. Default is `0.0`.
+Output:
+`Lambda` and `A`, such that `T = A * Lambda`, and `A` contains the left singular vectors.
+"""
+function svdleft(
     T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
 )
@@ -63,6 +90,19 @@ function svdright(
     return U, Diagonal(S) * Vd
 end
 
+"""
+    svdleftright(
+        T::AbstractArray{ValueType};
+        Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+    )
+Computes the left and right singular vectors of tensor T.
+Input:
+- `T`: the tensor to be decomposed.
+- `Nkeep`: maximum number of singular values to keep. Default is `typemax(Int)`.
+- `tolerance`: minimum magnitude of singular value to keep. Default is `0.0`.
+Output:
+`A`, `Lambda`, and `B`, such that `T = A * Lambda * B`, where `A` and `B` contain the left and right singular vectors, respectively.
+"""
 function svdleftright(
     T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0

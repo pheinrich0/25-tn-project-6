@@ -1,4 +1,5 @@
 using Test
+using LinearAlgebra
 import tn_julia: tensor2MPS
 
 @testset "MPS" begin
@@ -37,5 +38,22 @@ import tn_julia: tensor2MPS
         end
         # Now, we actually discarded information.
         @test sum(discardedweight) .≈ 0.5
+    end
+
+    @testset "Bring the tensor into various canonical forms" begin
+        d = 2
+        D = 300
+        L = 100
+
+        MPS = [
+            rand(1, d, D),
+            [rand(D, d, D) for _ in 1:L-2]...,
+            rand(D, d, 1)
+        ]
+
+        sitecanonical!(MPS, 1)
+        for M in MPS[2:end]
+            @test contract(M, [2, 3], M, [2, 3]) ≈ I(size(M, 1)) # M is a right isometry
+        end
     end
 end
