@@ -59,7 +59,7 @@ import tn_julia: tensor2MPS, leftcanonical!, rightcanonical!, sitecanonical!
         end
 
         # Normalize MPS:
-        Lambda, B = svdright(MPS[1]) # Lambda is a 1x1 matrix containing the norm of MPS[1]
+        Lambda, B = svdright(MPS[1]) # Lambda is a 1x1 matrix containing the norm of the MPS
         MPS[1] = B
 
         @testset "left canonical form" begin
