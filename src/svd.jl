@@ -19,9 +19,9 @@ Output:
 - `discardedweight`: the sum of squares of the singular values that were discarded.
 """
 function svd(
-    T::AbstractArray{ValueType}, indicesU::AbstractVector{Int};
+    T::AbstractArray{<:Number}, indicesU::AbstractVector{Int};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
-) where {ValueType<:Number}
+)
     if isempty(T)
         return (zeros(0, 0), zeros(0), zeros(0, 0), 0.0)
     end
@@ -48,25 +48,25 @@ function svd(
 end
 
 function svdleft(
-    T::AbstractArray{ValueType};
+    T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
-) where {ValueType<:Number}
+)
     U, S, Vd, _ = svd(T, [1], Nkeep=Nkeep, tolerance=tolerance)
     return U * Diagonal(S), Vd
 end
 
 function svdright(
-    T::AbstractArray{ValueType};
+    T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
-) where {ValueType<:Number}
+)
     U, S, Vd, _ = svd(T, collect(1:ndims(T)-1), Nkeep=Nkeep, tolerance=tolerance)
     return U, Diagonal(S) * Vd
 end
 
 function svdleftright(
-    T::AbstractArray{ValueType};
+    T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
-) where {ValueType<:Number}
+)
     U, S, Vd, _ = svd(T, [1, 2], Nkeep=Nkeep, tolerance=tolerance)
     return U, Diagonal(S), Vd
 end
