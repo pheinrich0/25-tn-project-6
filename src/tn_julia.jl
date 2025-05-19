@@ -5,5 +5,6 @@ include("contract.jl")
 include("updateleft.jl")
 include("localspace.jl")
 include("identity.jl")
+include("svd.jl")
 
 end
