@@ -47,6 +47,30 @@ function svd(
     return (U, S, Vd, discardedweight)
 end
 
+function svdleft(
+    T::AbstractArray{ValueType};
+    Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+) where {ValueType<:Number}
+    U, S, Vd, _ = svd(T, [1], Nkeep=Nkeep, tolerance=tolerance)
+    return U * Diagonal(S), Vd
+end
+
+function svdright(
+    T::AbstractArray{ValueType};
+    Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+) where {ValueType<:Number}
+    U, S, Vd, _ = svd(T, collect(1:ndims(T)-1), Nkeep=Nkeep, tolerance=tolerance)
+    return U, Diagonal(S) * Vd
+end
+
+function svdleftright(
+    T::AbstractArray{ValueType};
+    Nkeep::Int=typemax(Int), tolerance::Float64=0.0
+) where {ValueType<:Number}
+    U, S, Vd, _ = svd(T, [1, 2], Nkeep=Nkeep, tolerance=tolerance)
+    return U, Diagonal(S), Vd
+end
+
 """
     tensor2MPS(T::AbstractArray{ValueType})
 
@@ -66,7 +90,7 @@ function tensor2MPS(
 ) where {ValueType<:Number}
     # Dummy legs added for convenient reshaping into MPS
     tail = reshape(T, (1, size(T)..., 1))
-    MPS = Array{ValueType, 3}[] # Initialize an empty vector to store the MPS tensors
+    MPS = Array{ValueType,3}[] # Initialize an empty vector to store the MPS tensors
     discardedweight = Float64[]
     while ndims(tail) > 2
         U, S, tail, w = tn_julia.svd(tail, [1, 2]; Nkeep=Nkeep, tolerance=tolerance)
