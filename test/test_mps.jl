@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import tn_julia: tensor2MPS
+import tn_julia: tensor2MPS, leftcanonical!, rightcanonical!, sitecanonical!
 
 @testset "MPS" begin
     @testset "Generating an MPS from a GHZ state" begin
@@ -51,9 +51,35 @@ import tn_julia: tensor2MPS
             rand(D, d, 1)
         ]
 
-        sitecanonical!(MPS, 1)
-        for M in MPS[2:end]
-            @test contract(M, [2, 3], M, [2, 3]) ≈ I(size(M, 1)) # M is a right isometry
+        @testset "right canonical form" begin
+            rightcanonical!(MPS)
+            for M in MPS[2:end]
+                @test contract(M, [2, 3], M, [2, 3]) ≈ I(size(M, 1)) # M is a right isometry
+            end
+        end
+
+        # Normalize MPS:
+        Lambda, B = svdright(MPS[1]) # Lambda is a 1x1 matrix containing the norm of MPS[1]
+        MPS[1] = B
+
+        @testset "left canonical form" begin
+            leftcanonical!(MPS)
+            for M in MPS[1:end]
+                @test contract(M, [1, 2], M, [1, 2]) ≈ I(size(M, 3)) # M is a left isometry
+            end
+        end
+
+        rightcanonical!(MPS)
+
+        @testset "site canonical form" begin
+            center = div(L, 2)
+            sitecanonical!(MPS, center)
+            for M in MPS[1:center-1]
+                @test contract(M, [1, 2], M, [1, 2]) ≈ I(size(M, 3)) # M is a left isometry
+            end
+            for M in MPS[center+1:end]
+                @test contract(M, [2, 3], M, [2, 3]) ≈ I(size(M, 1)) # M is a right isometry
+            end
         end
     end
 end
