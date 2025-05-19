@@ -13,13 +13,13 @@ Random.seed!(1234) # Initialize the random number generator seed for repoducibil
         M = rand(D, d, D)
         M4leg = rand(D, d, d, D)
 
-        Lambda, B = svdleft(M)
+        Lambda, B = svdright(M)
         @test size(Lambda) == (D, D)
         @test size(B) == (D, d, D)
         @test contract(Lambda, [2], B, [1]) ≈ M
         @test contract(B, [2, 3], conj(B), [2, 3]) ≈ I(D) # B is an isometry
 
-        A, Lambda = svdright(M)
+        A, Lambda = svdleft(M)
         @test size(A) == (D, d, D)
         @test size(Lambda) == (D, D)
         @test contract(A, [3], Lambda, [1]) ≈ M
