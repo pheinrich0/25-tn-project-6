@@ -6,5 +6,6 @@ include("updateleft.jl")
 include("localspace.jl")
 include("identity.jl")
 include("svd.jl")
+include("mps.jl")
 
 end
