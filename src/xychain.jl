@@ -51,6 +51,6 @@ function extendhamiltonian(H_ell::AbstractMatrix, A_ell::AbstractArray{<:Number,
         A_ellplus1
     )
 
-    H_ellplus1 = reshape(H2 - S2, (d * D, d * D))
+    H_ellplus1 = reshape(H2 + S2, (d * D, d * D))
     return H_ellplus1, A_ellplus1
 end

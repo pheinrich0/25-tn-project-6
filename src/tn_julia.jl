@@ -8,5 +8,6 @@ include("identity.jl")
 include("svd.jl")
 include("mps.jl")
 include("xychain.jl")
+include("iterativediagonalization.jl")
 
 end
