@@ -1,9 +1,11 @@
 function iterativediagonalization(L::Int, Nkeep::Int; truncationtolerance::Float64=1e-8)
-    energies = zeros(L)
-
     Splus, Sminus, Sz, Id = spinlocalspace(1 // 2)
     H_ell = zeros(size(Id))
     A_ell = identity(ones(1, 1), 2, H_ell, 1)
+
+    energies = Float64[0.0]
+    MPS = Array{Float64, 3}[A_ell]
+
     for ell in 2:L
         H_new, A_new = extendhamiltonian(H_ell, A_ell)
         # Diagonalize the Hamiltonian
@@ -18,12 +20,13 @@ function iterativediagonalization(L::Int, Nkeep::Int; truncationtolerance::Float
         eigvals = eigvals[keep]
         eigvecs = eigvecs[:, keep]
 
-        energies[ell] = eigvals[1]
-
         # Update the Hamiltonian and tensor
         A_ell = contract(A_new, [3], eigvecs, [1])
         H_ell = Diagonal(eigvals)
+
+        push!(energies, eigvals[1])
+        push!(MPS, A_ell)
     end
 
-    return energies
+    return energies, MPS
 end
