@@ -6,11 +6,11 @@ import tn_julia: extendhamiltonian_xy, iterativediagonalization, contract
 
 L = 200
 Nkeep = 300
-spin = 1//2
+spin = 1 // 2
 
-exactenergy(L) = 0.5 - 0.5 / sin(0.5pi / (L+1))
+exactenergy(L) = 0.5 - 0.5 / sin(0.5pi / (L + 1))
 
-extendhamiltonian(H::AbstractMatrix, A::AbstractArray{<:Number, 3}) = extendhamiltonian_xy(H, A; J=-1.0, spin=spin)
+extendhamiltonian(H::AbstractMatrix, A::AbstractArray{<:Number,3}) = extendhamiltonian_xy(H, A; J=-1.0, spin=spin)
 energies_iterdiag, mps = iterativediagonalization(extendhamiltonian, 2, L, Nkeep)
 
 # Part (c): Plot energy per site vs. chain length
@@ -26,7 +26,7 @@ p2 = plot(
     label="iter. diag.",
     xlabel="L", ylabel="Energy difference per site")
 
-plot(p1, p2, layout=(2,1))
+plot(p1, p2, layout=(2, 1))
 savefig("iterativediagonalization-energies.pdf")
 
 # Part (d) (iii): Check isometry conditions
@@ -39,7 +39,7 @@ println("Maximum error: $(maximum(isometry_error))")
 # Part (d) (iv): Check the MPS norm
 mpscontraction = ones(1, 1)
 for M in mps
-    global  mpscontraction
+    global mpscontraction
     mpscontraction = contract(mpscontraction, [1], M, [1])
     mpscontraction = contract(mpscontraction, [1, 2], M, [1, 2])
 end
