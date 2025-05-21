@@ -2,13 +2,16 @@ using Plots
 using LaTeXStrings
 using LinearAlgebra
 
-import tn_julia: extendhamiltonian, iterativediagonalization, contract
+import tn_julia: extendhamiltonian_xy, iterativediagonalization, contract
 
 L = 200
 Nkeep = 300
+spin = 1//2
 
 exactenergy(L) = 0.5 - 0.5 / sin(0.5pi / (L+1))
-energies_iterdiag, mps = iterativediagonalization(L, Nkeep)
+
+extendhamiltonian(H::AbstractMatrix, A::AbstractArray{<:Number, 3}) = extendhamiltonian_xy(H, A; J=-1.0, spin=spin)
+energies_iterdiag, mps = iterativediagonalization(extendhamiltonian_xy, 2, L, Nkeep)
 
 # Part (c): Plot energy per site vs. chain length
 p1 = plot(

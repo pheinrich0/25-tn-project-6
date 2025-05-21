@@ -1,10 +1,14 @@
-function iterativediagonalization(L::Int, Nkeep::Int; truncationtolerance::Float64=1e-8)
-    Splus, Sminus, Sz, Id = spinlocalspace(1 // 2)
-    H_ell = zeros(size(Id))
+function iterativediagonalization(
+    extendhamiltonian::Function,
+    localdimension::Int,
+    L::Int, Nkeep::Int;
+    truncationtolerance::Float64=1e-12
+)
+    H_ell = zeros(localdimension, localdimension)
     A_ell = identity(ones(1, 1), 2, H_ell, 1)
 
     energies = Float64[0.0]
-    MPS = Array{Float64, 3}[A_ell]
+    MPS = Array{ComplexF64, 3}[A_ell]
 
     for ell in 2:L
         H_new, A_new = extendhamiltonian(H_ell, A_ell)
