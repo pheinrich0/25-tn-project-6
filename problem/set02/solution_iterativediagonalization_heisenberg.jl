@@ -23,7 +23,7 @@ plot(
 if spin == 1//2
     hline!([0.25 - log(2)], label=L"Infinite chain (exact), $S = 1/2$", linestyle=:dash)
 elseif spin == 1
-    hline!([−1.401484039], label=L"Infinite chain (DMRG), $S = 1$", linestyle=:dash)
+    hline!([-1.401484039], label=L"Infinite chain (DMRG), $S = 1$", linestyle=:dash)
 end
 
 savefig("iterativediagonalization-energies-heisenberg.pdf")
