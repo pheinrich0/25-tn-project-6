@@ -11,7 +11,7 @@ spin = 1//2
 exactenergy(L) = 0.5 - 0.5 / sin(0.5pi / (L+1))
 
 extendhamiltonian(H::AbstractMatrix, A::AbstractArray{<:Number, 3}) = extendhamiltonian_xy(H, A; J=-1.0, spin=spin)
-energies_iterdiag, mps = iterativediagonalization(extendhamiltonian_xy, 2, L, Nkeep)
+energies_iterdiag, mps = iterativediagonalization(extendhamiltonian, 2, L, Nkeep)
 
 # Part (c): Plot energy per site vs. chain length
 p1 = plot(
