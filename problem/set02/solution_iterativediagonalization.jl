@@ -29,9 +29,16 @@ p2 = plot(
 plot(p1, p2, layout=(2,1))
 savefig("iterativediagonalization-energies.pdf")
 
+# Part (d) (iii): Check isometry conditions
+isometry_error = [
+    norm(contract(M, [1, 2], M, [1, 2]) .- I(size(M, 3))) for M in mps
+]
+println("Maximum error: $(maximum(isometry_error))")
+
 # Part (d) (iv): Check the MPS norm
 mpscontraction = ones(1, 1)
 for M in mps
+    global  mpscontraction
     mpscontraction = contract(mpscontraction, [1], M, [1])
     mpscontraction = contract(mpscontraction, [1, 2], M, [1, 2])
 end
