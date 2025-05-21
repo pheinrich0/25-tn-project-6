@@ -31,7 +31,8 @@ savefig("iterativediagonalization-energies.pdf")
 
 # Part (d) (iii): Check isometry conditions
 isometry_error = [
-    norm(contract(M, [1, 2], M, [1, 2]) .- I(size(M, 3))) for M in mps
+    # compute the error as the difference between M M* and identity, for each M in the MPS.
+    norm(contract(M, [1, 2], conj(M), [1, 2]) .- I(size(M, 3))) for M in mps
 ]
 println("Maximum error: $(maximum(isometry_error))")
 
