@@ -1,6 +1,6 @@
 using Test
 using LinearAlgebra
-import tn_julia: tensor2MPS, leftcanonical!, rightcanonical!, sitecanonical!
+import tn_julia: contract, tensor2MPS, svdright, leftcanonical!, rightcanonical!, sitecanonical!
 
 @testset "MPS" begin
     @testset "Generating an MPS from a GHZ state" begin
