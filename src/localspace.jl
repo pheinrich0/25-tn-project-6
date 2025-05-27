@@ -34,3 +34,24 @@ function spinlocalspace(spin::Rational=1 // 2)
 
     return Splus, Sminus, Sz, Id
 end
+
+"""
+    spinlessfermionlocalspace()
+
+Construct the spin local space operators for a given spin value.
+
+Returns:
+- `F`: The fermion annihilation operator.
+- `Z`: Jordan-Wigner string operator for anti-commutation sign of fermions.
+- `Id`: The identity operator.
+
+All operators are represented as matrices of size (2, 2).
+"""
+function spinlessfermionlocalspace()
+    Id = I(2)
+
+    F = [0 1; 0 0]
+    Z = [1 0; 0 -1]
+
+    return F, Z, Id
+end
