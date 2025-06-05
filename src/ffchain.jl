@@ -16,36 +16,27 @@ function extendhamiltonian_ff(
     H_ell::AbstractMatrix, A_ell::AbstractArray{<:Number, 3};
     t::Float64 = 1.0
 )
-    Dleft = size(A_ell, 1)
-    Ileft = reshape(I(Dleft), (Dleft, 1, Dleft))
-
     F, Z, Id = spinlessfermionlocalspace()
-    Fdag = F'  # creation operator
-    d = size(F, 1)
-
-    A_ellplus1 = identity(A_ell, 3, F, 1)  # you might want to use Id here instead
-
-    # Combine F† and F into a hopping interaction tensor
-    hop = cat(Fdag, F, dims=3)
-
-    # First contraction over A_ell
-    hop1 = reshape(permutedims(hop, (2, 3, 1)), (1, d, 2, d))
-    H1 = updateLeft(Ileft, A_ell, hop1, A_ell)
-
-    # Second contraction over A_ellplus1
-    hop2 = reshape(permutedims(hop, (3, 2, 1)), (2, d, 1, d))
-    H2 = updateLeft(H1, A_ellplus1, hop2, A_ellplus1)
-
-    # Propagate previous H_ell through identity
-    D = size(H_ell, 1)
-    H3 = updateLeft(
-        reshape(H_ell, (D, 1, D)),
-        A_ellplus1,
-        reshape(Id, (1, d, 1, d)),
-        A_ellplus1
-    )
-
-    H_ellplus1 = reshape(H3 - t * H2, (d * D, d * D))
+    
+    # Create the left fermion operator from the previous site
+    AID = identity(A_ell, 1)
+    Fprev = updateLeft(reshape(AID, (size(AID,1), 1, size(AID,1))), A_ell, reshape(F, (1, size(F,2), 1, size(F,1))), A_ell)
+    
+    # Create the new MPS tensor for the current site (equivalent to getIdentity)
+    A_ellplus1 = identity(H_ell, 2, Id, 2)
+    
+    # Propagate previous Hamiltonian through identity on new site
+    H_propagated = updateLeft(reshape(H_ell, (size(H_ell,1), 1, size(H_ell,2))), A_ellplus1, reshape(Id, (1, size(Id,2), 1, size(Id,1))), A_ellplus1)
+    H_propagated = dropdims(H_propagated, dims=2)  # Drop the dummy dimension
+    
+    # Build hopping term: -F†_{l-1} F_l - F†_l F_{l-1}
+    Hhop = -updateLeft(Fprev, A_ellplus1, 
+        reshape(permutedims(F, (2, 1)), (1, size(F,2), 1, size(F,1))), A_ellplus1)
+    Hhop = dropdims(Hhop, dims=2)
+    Hhop = Hhop + Hhop'  # Make Hermitian to include both hopping directions
+    
+    H_ellplus1 = H_propagated + t * Hhop
+    
     return H_ellplus1, A_ellplus1
 end
 
