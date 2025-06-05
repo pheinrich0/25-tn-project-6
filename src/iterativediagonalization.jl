@@ -25,7 +25,13 @@ function iterativediagonalization(
         eigvecs = eigvecs[:, keep]
 
         # Update the Hamiltonian and tensor
-        A_ell = contract(A_new, [3], eigvecs, [1])
+        if ell < L
+            A_ell = contract(A_new, [3], eigvecs, [1])
+        else
+            # Select the ground state at the last site
+            A_ell = contract(A_new, [3], eigvecs[:, 1], [1])
+            A_ell = reshape(A_ell, (size(A_ell,1), size(A_ell,2), 1))
+        end
         H_ell = Diagonal(eigvals)
 
         push!(energies, eigvals[1])
