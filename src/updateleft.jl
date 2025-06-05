@@ -15,7 +15,7 @@ where B* is the complex conjugate of B. Note the leg ordering (bottom-to-top).
 Input:
 - `C` (3-leg tensor): environment to the left of the current site.
 - `B`, `A` (3-leg tensors): ket tensors on the current site.
-- `X` (4-leg tensor): local operator.
+- `X` (4-leg tensor): local operator. # ordering: left bottom right top
 
 Output:
 - Tensor corresponding to the fully contracted tensor network shown above.
