@@ -20,8 +20,8 @@ function computeRightEnvironment(MPO, MPS, ell_min)
 end
 
 function applyHtoC(W, MPS, ell)
-    Lenv = computeleftenvironment(W, MPS, ell-1)
-    Renv = computerightenvironment(W, MPS, ell+1)
+    Lenv = computeLeftEnvironment(W, MPS, ell-1)
+    Renv = computeRightEnvironment(W, MPS, ell+1)
     Cell = MPS[ell]
     Well = W[ell]
 
