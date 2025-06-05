@@ -1,1 +1,4 @@
 /Manifest*.toml
+
+# Ignore the intermediate data files
+*.jld2
