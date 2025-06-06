@@ -13,8 +13,7 @@ using tn_julia: leftcanonical,  rightcanonical,  sitecanonical,
 
 ## i) shift isometry center
 Lc = 50; # isometry center
-Nkeep = 50; # maximal # of states to keep
-mps_iso = sitecanonical(mps, Lc; Nkeep=100, tolerance=1e-8)
+mps_iso = sitecanonical(mps, Lc; tolerance=1e-8)
 
 ## ii) compute left and right environments
 Lenv = computeLeftEnvironment(W, mps_iso, Lc-1)
