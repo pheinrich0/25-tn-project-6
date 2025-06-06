@@ -39,6 +39,8 @@ while true
 end
 MPS1s = Mfin;
 
+@save "problem/set03/solution_d.jld2" MPS1s Esweep Eex
+
 publication_theme() = Theme(
     fontsize=16, font="CMU Serif",
     Axis=(xlabelsize=20, ylabelsize=20, xgridstyle=:dash, ygridstyle=:dash,
