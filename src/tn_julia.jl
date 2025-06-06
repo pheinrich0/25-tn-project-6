@@ -1,5 +1,7 @@
 module tn_julia
 
+using Printf
+
 include("gaussian.jl")
 include("contract.jl")
 include("updateleft.jl")
@@ -13,5 +15,6 @@ include("heisenbergchain.jl")
 include("iterativediagonalization.jl")
 include("ffchain.jl")
 include("environments.jl")
+include("dmrg.jl")
 
 end
