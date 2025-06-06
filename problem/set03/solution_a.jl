@@ -38,4 +38,4 @@ for itL in (1:L)
 end
 
 @printf("Eiter - E_MPO : %.6f", Eiter - E_MPO[1])
-@save "problem/set03/share.jld2" mps W Eex Eiter L
+@save "problem/set03/solution_a.jld2" mps W Eex Eiter L
