@@ -142,7 +142,7 @@ function sitecanonical!(
         Nkeep=Nkeep, tolerance=tolerance
     )
     rightcanonical!(
-        view(MPS, canonicalcenter+1:length(MPS));
+        view(MPS, canonicalcenter:length(MPS));
         Nkeep=Nkeep, tolerance=tolerance
     )
 end
