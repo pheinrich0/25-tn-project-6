@@ -3,6 +3,8 @@ using Printf
 using JLD2
 using CairoMakie
 
+using tn_julia: sitecanonical, applyHtoC
+
 # 1s DMRG vs iterative diagonalization: Local variance
 var_it = zeros(L,1); # local variace of MPSiso
 var_1s = zeros(L,1); # local variance from MPS1s
