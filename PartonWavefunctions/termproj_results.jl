@@ -11,6 +11,7 @@ Dmax = 100;  # bond dimension cutoff
 
 # import functions for d_m
 include("dm_mpo.jl")
+include("checkoccupation.jl")
 momentaN32 = momenta(32);
 
 # generate the matrix containing the coefficients A_m_l = A_m_{j, α}, to construct the mpo for d_{m,α} =  N^(-1/2) ∑_{j=1}^N e^(-i*m*j) c'_{j,α}
@@ -34,15 +35,11 @@ end
 A[1,3]
 copymps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
 test = dm_alpha_mpo(1, 1/2, 32, A)
-
-
 test3 = tn.apply_mpo(test, copymps, Dmax)
 test3[1]
-
 copymps[1] # copymps is modified when using this function
 
 ## loop to apply the dm mpos 
-
 MPS_iter = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 mps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]   # start with the Jordan-Wigner MPS, make sure its datatype is correct
 
@@ -63,72 +60,31 @@ for i in eachindex(mps)
     print(size(mps[i]))
 end
 
-tn.left_canonical_qr!(mps)
-## further test with own apply MPO function
+#create list of mps for single occupation mps, ie. 32x64 matrix of mps tensor
+dk_singleOccStates = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
+vac = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]  
+# check whether the |0> state is normalized
+println("contracting <0|0> gives: ", tn.mps_product(vac, vac))
 
-MPS_iter2 = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
-mps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]   # start with the Jordan-Wigner MPS, make sure its datatype is correct
-
-for itN in 1:7
+for itN in 1:length(momentaN32)
     for alpha in [1/2, -1/2]  # alpha = 0 for spin up, 1 for spin down
         mpo_dk_k = dm_alpha_mpo(itN, alpha, N, A)
-        mps = tn.apply_mpo(mpo_dk_k, mps, Dmax)
+        varmps = tn.applyMPO(vac, mpo_dk_k, Dmax)
+        println("for j=$itN α=$alpha contract <0|dk dk'|0> gives: ", tn.mps_product(varmps, varmps))
+        println("the occupation number is: ", check_occupation(varmps))
         if alpha==1/2   # spin up -> odd row index
-        println("Iteration $alpha for k = $itN completed." )
-        result = MPS_iter[(2*itN-1), 1] ≈ mps[1]
-        println("Test result for (2*itN-1), 1: ", result)
-        MPS_iter2[(2*itN-1), :] = mps
+            dk_singleOccStates[(2*itN-1), :] = varmps
         else    # spin down -> even row index
-            MPS_iter2[2*itN, :] = mps
-            println("Iteration $alpha for k = $itN completed." )
-            result = MPS_iter[(2*itN), 2] ≈ mps[2]
-            println("Test result for (2*itN), 2: ", result)
+            dk_singleOccStates[2*itN, :] = varmps
         end
-
     end
 end
-# starting with k=4 the result start disagreeing with the other applyMPO function
-check_occupation(MPS_iter[14,:])
-mpsvar = deepcopy(MPS_iter2[14,:])
-check_occupation(mpsvar) # the occupation number for this version is also slightly lower
-
-for i in eachindex(mpsvar)
-    if any(isnan, mpsvar[i]) || any(isinf, mpsvar[i])
-        @warn "NaN or Inf in tensor at site $i"
-    end
-end
-
-for (i, T) in enumerate(mpsvar)
-    @info "Site $i norm: ", norm(T)
-end
-
-tn.apply_mpo(dm_alpha_mpo(8, 1/2, N, A),mpsvar, Dmax)
-
-tn.applyMPO( mpsvar, dm_alpha_mpo(8, 1/2, N, A), Dmax)
-
-# Conclusion: No fucking idea
 
 
 ## cross check with occupation number after each dm application  
 
 n_op_fermion = zeros(1,2,1,2);
 n_op_fermion[1, :, 1, :] = Diagonal([1,0]);
-
-function check_occupation(MPS::Vector{Array{ComplexF64, 3}})
-    L = length(MPS)
-    n = 0
-    for i in 1:L
-        n_i = zeros(1, 2, 1, 2)  # left and right bond dimensions are 1
-        n_i[1, :, 1, :] = (I(2) - [-1 0; 0 1]) ./2
-        I_i = reshape(I(2), (1, 2, 1, 2))  # Identity for i≠l
-        n_tensor = reshape([1], (1,1,1)) # n[l] reshaped to a tensor
-        for l in 1:L
-            n_tensor = tn.updateLeft(n_tensor, MPS[l], if i==l n_i else I_i end, MPS[l])
-        end
-        n = n + n_tensor[1,1,1]
-        end
-    return n
-end
 
 # plot occupation number vs steps
 MPS_iter[1,:]
@@ -142,7 +98,7 @@ for i in 1:length(occ_vals)
 end
 
 # Plot the occupation numbers
-plot(occ_vals, xlabel="State index", ylabel="Occupation number", title="Occupation Number per State", legend=false)
+plotOccN_standard = plot(occ_vals, xlabel="State index", ylabel="Occupation number", title="Occupation Number per State", legend=false)
 
 ## function for entanglement_entropy
 include("entanglementEntropy.jl")
@@ -190,10 +146,20 @@ for itN in 1:length(momentaN32)
     end
 end
 
+# double check wether construction is right, Conclusion: yes
+@test Xtilde[3,5] ≈ tn.mpo_transition(x_op64, dk_singleOccStates[3,:], dk_singleOccStates[5,:])
+@test Xtilde[22,31] ≈ tn.mpo_transition(x_op64, dk_singleOccStates[22,:], dk_singleOccStates[31,:])
+
 # taking complex conjugate: (X̃_mn)^* =  X̃_nm
 # since X is hermitian ⟨0|(d_m X d_n')'|0⟩ = ⟨0| d_n * X' * d_m' |0⟩ = ⟨0| d_n * X * d_m† |0⟩
 # → ie. the matrix X_tilde is hermitian → we expect real eigenvalues
 eigvals, B = eigen(Xtilde)#
+
+eigvals[end]
+pWanniereigvals = plot(real(eigvals));     # the eigenvalues are the even numbers 
+
+
+B[:,1]'*Xtilde*B[:,1]≈eigvals[1]
 
 # since the function for dm_alpha_mpo takes the matrix A as an input and then dm_alpha is determined by the m_alpha'th row of a
 # we can simply pass the matrix B^T A since
@@ -202,11 +168,11 @@ eigvals, B = eigen(Xtilde)#
 
 # calculate B^T * A and check dimensions
 # calculate B^T * A and check dimensions
+transpose(B)[1,:]==B[:,1]
 BT_A = transpose(B) * A
 @test size(BT_A) == size(A) 
 
 ## now do the same loop applying the dks with truncation as for A
-
 # Initialize storage and starting MPS for BT_A
 MPS_iter_wannier = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 mps_wannier = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
@@ -257,7 +223,24 @@ pWannierEE =plot(ee_vals_BT,
 pCombined = plot(ee_vals, label="Standard", xlabel="Iteration", ylabel="Entanglement entropy", title="Entanglement entropy comparison")
 plot!(pCombined, ee_vals_BT, label="Wannier Orbitals")
 
+# check whether the wannier states are correctly normalized and are eigenstates of 
+wannierStates = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
+vac = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]  
 
+for itN in 1:length(momentaN32)
+    for alpha in [1/2, -1/2]  # alpha = 0 for spin up, 1 for spin down
+        mpo_dk_k = dm_alpha_mpo(itN, alpha, N, BT_A)
+        varmps = tn.applyMPO(vac, mpo_dk_k, Dmax)
+        println("for j=$itN α=$alpha contract <0|dk dk'|0> gives: ", tn.mps_product(varmps, varmps))
+        println("the occupation number is: ", check_occupation(varmps))
+        println("The position operator exp. value is ", tn.mpo_expectation(x_op64, varmps))
+        if alpha==1/2   # spin up -> odd row index
+            wannierStates[(2*itN-1), :] = varmps
+        else    # spin down -> even row index
+            wannierStates[2*itN, :] = varmps
+        end
+    end
+end
 
 ## Apply Wannier orbitals with left meets right strategy
 # Apply MPOs in the alternating sequence
@@ -279,20 +262,21 @@ MPS_iter_LmeetsR = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32),
 mps_LmeetsR = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
 n=1
 for idx in 1:length(order)
+    println(idx)
+    println(flat_pairs[order[idx]])
+end
+Dmax
+for idx in 1:19
     itN, alpha = flat_pairs[order[idx]]
     mpo_dk = dm_alpha_mpo(itN, alpha, N, BT_A)
-    mps_LmeetsR = tn.applyMPO(mps_LmeetsR, mpo_dk, 101) # had to use DMax=101 to avoid lapackerror wtf wtf bro fuck programming......
+    mps_LmeetsR = tn.applyMPO(mps_LmeetsR, mpo_dk, 100) # had to use DMax=101 to avoid lapackerror wtf wtf bro fuck programming......
     # Store to the correct row: up -> odd, down -> even
-    if alpha==1/2   # spin up -> odd row index
-        MPS_iter_LmeetsR[idx, :] = mps_LmeetsR
-    else    # spin down -> even row index
-        MPS_iter_LmeetsR[idx, :] = mps_LmeetsR
-    end
+    MPS_iter_LmeetsR[idx, :] = mps_LmeetsR
     println("Iteration $n for s=$alpha, k = $itN completed.", " Time: ", now())
     n=n+1
 end
 # also plot occupation, and entanglement_entropy
-occ_vals_LmR = zeros(size(MPS_iter_wannier, 1))
+occ_vals_LmR = zeros(size(MPS_iter_LmeetsR, 1))
 for i in 1:length(occ_vals_LmR)
     occ_vals_LmR[i] = real(check_occupation(MPS_iter_LmeetsR[i, :]))
     println("Occupation after application #$i ", occ_vals_LmR[i])
@@ -316,9 +300,26 @@ pLmR =plot(ee_vals_LmR,
      xlabel="Iteration",
      ylabel="Entanglement entropy",
      title="Entanglement entropy in the center; Left meets right",
-     legend=false);
+     legend=false)
 
 # Combined plot of entanglement entropy for Standard, Wannier, and Left meets right
 pCombined = plot(ee_vals, label="Standard", xlabel="Iteration", ylabel="Entanglement entropy", title="Entanglement entropy comparison")
 plot!(pCombined, ee_vals_BT, label="Wannier Orbitals")
 plot!(pCombined, ee_vals_LmR, label="Left meets right")
+
+
+## wannier test: do we have eigenfcts of location operator
+Testmps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
+
+testWannierMpo = dm_alpha_mpo(5, 1/2, N, BT_A)
+check_occupation(mps_test)
+mps_test = tn.applyMPO(Testmps, testWannierMpo, Dmax)
+
+Testmps[4]=occupied
+tn.mpo_expectation(x_op64, Testmps)
+
+size(B)
+@test B'*B ≈ I(size(B, 1))  # is a unitary matrix
+
+size(A)
+@test A*A' ≈ I(size(A,1)) # also unitary

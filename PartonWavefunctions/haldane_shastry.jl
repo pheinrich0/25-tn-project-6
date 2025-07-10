@@ -39,4 +39,3 @@ function spin_spin_corr(N::Integer, q::Integer)
 end
 
 
-

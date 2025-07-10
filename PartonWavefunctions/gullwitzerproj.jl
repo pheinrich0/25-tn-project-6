@@ -1,0 +1,74 @@
+# if you combine two neighboring spin sites into a 4dim leg, the gullwitzer projector looks like
+P2 = zeros(ComplexF64, 4, 4);
+P2[2, 2] = 1.0;  # |01>
+P2[3, 3] = 1.0;  # |10>
+# and the mpo would look like 
+N=32;
+Proj_parton = Vector{Array{ComplexF64,4}}(undef, N)
+for i in eachindex(Proj_parton)
+    Proj_parton[i] = reshape(P2, (1,4,1,4))
+end
+
+## this part doesnt produce the right result, skip to end
+function gullwitzer_mpo()
+    W1 = zeros(ComplexF64, 1, 2, 2, 2)
+    W2 = zeros(ComplexF64, 2, 2, 2, 1)
+
+    # |01> → virtual index 1
+    W1[1, 1, 2, 1] = 1.0 
+    W2[1, 1, 2, 1] = 1.0 
+
+    # |10> → virtual index 2
+    W1[1, 2, 1, 2] = 1.0 
+    W2[2, 2, 1, 1] = 1.0 
+
+    return W1, W2
+end
+
+Proj1, Proj2 = gullwitzer_mpo()
+Id_site = tn.identity(Proj1, 2, Proj2, 2)
+PG = tn.contract(Proj1, 3, Proj2, 1)
+reshape(PG, (1,4,1,4))[1,:,1,:]
+PG2 = tn.contract(PG, [2,4], Id_site, [1,2])
+ProjG= tn.contract(PG2, [2,3], Id_site,[1,2], [1,3,2,4])
+
+ProjG[1,:,1,:]
+
+
+# this doesnt match the the two leg projector, it is thus propably better to instead manipulate the mps to have combined legs
+
+# different approach the Gullwitzer proj can be written as n_1 + n_2 - 2*n_1*n_2
+# this can be factorized to a mpo rep as (1, n1, n1) (n2, 1 , -2*n2)
+nOp = diagm([1,0])
+P_up = zeros(1,2,3,2)
+P_down = zeros(3,2,1,2)
+
+P_up[1,:,1,:] = I(2);
+P_up[1,:,2,:] = nOp;
+P_up[1,:,3,:] = nOp;
+P_down[1,:,1,:] = nOp;
+P_down[2,:,1,:] = I(2);
+P_down[3,:,1,:] = -2*nOp;
+
+reshape(tn.contract(P_up, 3, P_down, 1)[1,:,:,:,1,:], (4,4))
+# also doesnt really look right but ok
+testmps = Vector{Array{ComplexF64, 3}}(undef, 2)
+unoccupied = zeros(1, 2, 1);
+unoccupied[1, 2, 1] = 1.0; 
+occ = zeros(1, 2, 1);
+occ[1, 1, 1] = 1.0; 
+testmps = [occ, occ]
+check_occupation(testmps)
+
+res  =tn.applyMPO_float(testmps, [P_up, P_down], 100)
+check_occupation(res)
+# the double occupation gets removed, i guess thats a good sign
+
+# create a L=64 mpo, that has for each odd-even pair P_up and P_down
+Gullwitzer_mpo = Vector{Array{ComplexF64,4}}(undef, 2N)
+for i in 1:32
+    Gullwitzer_mpo[2*i-1] = P_up
+    Gullwitzer_mpo[2*i] = P_down
+end
+
+@save "gullwitzerProj.jld2" Proj_parton Gullwitzer_mpo

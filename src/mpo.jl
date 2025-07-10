@@ -13,6 +13,31 @@ function mpo_expectation(W::Vector{<:AbstractArray{<:Number,4}},
 end
 
 """
+    mps_product(MPS1, MPS2)
+
+Compute the overlap <MPS1|MPS2> by contracting MPS1 and MPS2 with the identity MPO.
+"""
+function mps_product(MPS1::Vector{<:AbstractArray{<:Number,3}}, MPS2::Vector{<:AbstractArray{<:Number,3}})
+    # Ensure same number of sites
+    if length(MPS1) != length(MPS2)
+        error("MPS1 and MPS2 must have the same number of sites: got $(length(MPS1)) and $(length(MPS2))")
+    end
+
+    # Initialize scalar environment as a 3-leg tensor
+    C = ones(eltype(MPS1[1]), (1, 1, 1))
+
+    p = size(MPS1[1], 2) # phys bond dim
+    # Identity MPO tensor: bond dims = 1, physical dims = p
+    Id = reshape(I(p), (1,p,1,p))
+
+    for i in eachindex(MPS1)
+        C = updateLeft(C, MPS2[i], Id, MPS1[i])
+    end
+    # Extract and return the scalar overlap
+    return C[1, 1, 1]
+end
+
+"""
     mpo_transition(W, MPS1, MPS2)
 
 Compute the transition amplitude <s1|MPO|s2> by contracting MPO W
@@ -89,4 +114,20 @@ function applyMPO(mps::Vector{Array{ComplexF64, 3}}, mpo::Vector{Array{ComplexF6
     return result
 end
 
-# Remark: Sefis function doesnt modify the input mpo
+function applyMPO_float(mps::Vector{Array{Float64, 3}}, mpo::Vector{Array{Float64, 4}}, Nkeep::Int=Inf)
+    result = Vector{Array{Float64, 3}}(undef, length(mps))
+    for i in 1:length(mps)
+        mps_new = contract(mps[i], [2], mpo[i], [4])
+        # combine legs (1, 3) and (2, 5)
+        id14 = identity(mps_new, 1, mps_new, 3)
+        id23 = identity(mps_new, 2, mps_new, 5)
+        mps_new = contract(mps_new, [1, 3], id14, [1, 2])
+        mps_new = contract(mps_new, [1, 3], id23, [1, 2])
+        result[i] = permutedims(mps_new, (2, 1, 3))
+    end
+    #TODO change leftcanonical to a QR decomposition instead of SVD
+    leftcanonical!(result)
+    rightcanonical!(result; Nkeep=Nkeep)
+    return result
+end
+# Remark: Sefis function doesnt modify the input mpo, and works better
