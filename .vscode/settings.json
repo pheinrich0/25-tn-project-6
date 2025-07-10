@@ -1,3 +1,14 @@
 {
     "julia.environmentPath": "/Users/pheinrich/Documents/Tensor Networks 25/25-tn-project-6"
+
+
+    "editor.tokenColorCustomizations": {
+  "textMateRules": [
+    {
+      "scope": "comment",
+      "settings": {
+        "foreground": "#04970e"  // well-visible light blue (iOS blue)
+      }
+    }
+  ]
 }

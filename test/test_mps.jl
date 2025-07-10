@@ -83,3 +83,12 @@ import tn_julia: contract, tensor2MPS, svdright, leftcanonical!, rightcanonical!
         end
     end
 end
+
+
+mps
+@testset "left canonical form" begin
+            tn.left_canonical_qr!(mps)
+            for M in mps[1:end]
+                @test tn.contract(M, [1, 2], M, [1, 2]) ≈ I(size(M, 3)) # M is a left isometry
+            end
+        end

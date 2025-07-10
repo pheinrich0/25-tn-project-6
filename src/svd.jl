@@ -67,6 +67,7 @@ function svdright(
 )
     U, S, Vd, _ = svd(T, [1], Nkeep=Nkeep, tolerance=tolerance)
     return U * Diagonal(S), Vd
+    
 end
 
 """
@@ -85,7 +86,7 @@ Output:
 function svdleft(
     T::AbstractArray{<:Number};
     Nkeep::Int=typemax(Int), tolerance::Float64=0.0
-)
+) 
     U, S, Vd, _ = svd(T, collect(1:ndims(T)-1), Nkeep=Nkeep, tolerance=tolerance)
     return U, Diagonal(S) * Vd
 end

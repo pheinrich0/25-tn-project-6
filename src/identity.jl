@@ -27,3 +27,4 @@ function identity(A, legA::Int, B, legB::Int)
         (size(A, legA), size(B, legB), targetsize)
     )
 end
+
