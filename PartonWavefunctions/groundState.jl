@@ -101,3 +101,5 @@ end
 calculate_n_j(parton_mps, 4)
 fermionic_mps
 @save "PartonWavefunctions/groundstates.jld2" parton_mps fermionic_mps
+
+r_snake = collect(Iterators.flatten(((i, N - i + 1) for i in 1:div(N,2))))

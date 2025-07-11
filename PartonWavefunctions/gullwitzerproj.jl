@@ -57,10 +57,11 @@ unoccupied = zeros(1, 2, 1);
 unoccupied[1, 2, 1] = 1.0; 
 occ = zeros(1, 2, 1);
 occ[1, 1, 1] = 1.0; 
-testmps = [occ, occ]
+testmps = [occ, unoccupied]
 check_occupation(testmps)
 
-res  =tn.applyMPO_float(testmps, [P_up, P_down], 100)
+res=tn.applyMPO_float(testmps, [P_up, P_down], 100)
+
 check_occupation(res)
 # the double occupation gets removed, i guess thats a good sign
 
@@ -72,3 +73,32 @@ for i in 1:32
 end
 
 @save "gullwitzerProj.jld2" Proj_parton Gullwitzer_mpo
+
+
+# other option, always contract two spin subsites, then apply the c^4 operator
+testes = tn.contract(testmps[1], 3, testmps[2], 1)
+mps4 = Vector{Array{ComplexF64, 3}}(undef, 1)
+mps4[1] = tn.contract(testes, [2,3], Id_site, [1,2], (1,3,2))
+ss_proj_parton = Vector{Array{ComplexF64, 4}}(undef, 1)
+ss_proj_parton[1] =Proj_parton[1]
+@test tn.applyMPO(mps4, ss_proj_parton, 10)[1]==mps4[1]
+
+# this works as expected, so maybe it is better to first create combined legs and then apply the gullwitzer proj
+
+# Function to create N site parton mps from 2N site fermionic mps
+function combine_spins_mps(mps::Vector{Array{Float64,3}})
+    if isodd(length(mps))
+        error("Length of input mps must be even, got $(length(mps))")
+    end
+    L = Int(length(mps) ÷ 2)
+    new_mps = Vector{Array{ComplexF64,3}}(undef, L)
+    Id_site = tn.identity(mps[1], 2, mps[2], 2)
+    for i in 1:L
+        # contract the right leg of spin up with the left leg of spin down
+        contractBond = tn.contract(mps[2i-1], 3, mps[2i], 1) 
+        new_mps[i] = tn.contract(contractBond, [2,3], Id_site, [1,2], (1,3,2))
+    end
+    return new_mps
+end
+
+combine_spins_mps(testmps)[1]

@@ -15,7 +15,7 @@ function check_occupation(MPS::Vector{Array{ComplexF64, 3}})
 end
 
 
-function check_occupation(MPS::Vector{Array{Float64, 3}})
+function check_occupation_float(MPS::Vector{Array{Float64, 3}})
     L = length(MPS)
     n = 0
     for i in 1:L
