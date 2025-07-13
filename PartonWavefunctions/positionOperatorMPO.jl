@@ -20,7 +20,7 @@ yields the MPO for X.
 
 function position_mpo(N::Int)
     # physical dimension d=2, bond-dimension D=2
-    F, Z, id = tn.spinlessfermionlocalspace()
+    F, Z, Id = tn.spinlessfermionlocalspace()
 
     W = Vector{Array{Float64,4}}(undef, N)
     for itL in 1:N
@@ -50,5 +50,4 @@ end
 
 
 # test: for the fermionic_mps the pos operator should be zero
-
 

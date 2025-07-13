@@ -38,3 +38,13 @@ end
 tn.apply_mpo(dm_alpha_mpo(8, 1/2, N, A),mpsvar, Dmax)
 tn.applyMPO( mpsvar, dm_alpha_mpo(8, 1/2, N, A), Dmax)
 # Conclusion: No fucking idea
+
+
+v = collect(1:16)
+function index_transform(n::Int)
+    return v[ceil(Int, n/2)], 1 - mod(n, 2)    
+end
+
+index_list = [index_transform(n) for n in 1:32]
+
+momentaN32

@@ -60,6 +60,11 @@ function dm_alpha_mpo(m::Int, spin, N::Int, coeffMat)
     return W
 end
 
+# function that turn the k index denoting the dk into d_m_alpha
+function getSiteSpinIndex(n::Int)
+    return ceil(Int, n/2), -1/2 + mod(n, 2) # returns the site, and spin 1/2 for odd n
+end
+
 
 """
     momenta(N)
@@ -86,4 +91,4 @@ end
 
 
 
-## MPO representation of the position operator
+

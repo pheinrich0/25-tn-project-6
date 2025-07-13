@@ -28,8 +28,7 @@ end
 Proj1, Proj2 = gullwitzer_mpo()
 Id_site = tn.identity(Proj1, 2, Proj2, 2)
 PG = tn.contract(Proj1, 3, Proj2, 1)
-reshape(PG, (1,4,1,4))[1,:,1,:]
-PG2 = tn.contract(PG, [2,4], Id_site, [1,2])
+PG2 = tn.contract(PG, [2,4], Id_site, [2,1])
 ProjG= tn.contract(PG2, [2,3], Id_site,[1,2], [1,3,2,4])
 
 ProjG[1,:,1,:]
@@ -75,6 +74,7 @@ end
 @save "gullwitzerProj.jld2" Proj_parton Gullwitzer_mpo
 
 
+
 # other option, always contract two spin subsites, then apply the c^4 operator
 testes = tn.contract(testmps[1], 3, testmps[2], 1)
 mps4 = Vector{Array{ComplexF64, 3}}(undef, 1)
@@ -86,7 +86,9 @@ ss_proj_parton[1] =Proj_parton[1]
 # this works as expected, so maybe it is better to first create combined legs and then apply the gullwitzer proj
 
 # Function to create N site parton mps from 2N site fermionic mps
-function combine_spins_mps(mps::Vector{Array{Float64,3}})
+# HOW TO USE: add include() statement
+
+function combine_spins_mps(mps::Vector{Array{ComplexF64,3}})
     if isodd(length(mps))
         error("Length of input mps must be even, got $(length(mps))")
     end
@@ -102,3 +104,25 @@ function combine_spins_mps(mps::Vector{Array{Float64,3}})
 end
 
 combine_spins_mps(testmps)[1]
+length(Proj_parton)
+Dmax
+function applyPG_parton(mps::Vector{Array{ComplexF64,3}})
+    if length(mps)!= 2*length(Proj_parton)
+        error("Length of input mps doesnt match projector")
+    end
+    partonmps = combine_spins_mps(mps)
+    projected = tn.applyMPO(partonmps, Proj_parton, Dmax)
+    for i in 1:length(projected)
+        
+    end
+    
+    return projected
+end
+
+## two ways to apply gullwitzer to 
+@load "PartonWavefunctions/fermiseas.jld2" dk_fermisea wannier_fermisea lmr_fermisea
+
+applyPG_parton(lmr_fermisea)
+
+partonmps = combine_spins_mps(dk_fermisea)
+    projected = tn.applyMPO(partonmps, Proj_parton)
