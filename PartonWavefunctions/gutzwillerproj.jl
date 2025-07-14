@@ -167,9 +167,14 @@ function applyPG_fermion_Normalized(mps::Vector{Array{ComplexF64,3}})
     if norm == 0
         error("Norm of projected MPS is zero, cannot normalize.")
     end
+    projected[1]*=1/norm
     return projected
 end
 
+mps1 = applyPG_fermion_Normalized(lmr_fermisea)
+tn.mps_product(mps1, mps1)
+
+check_occupation(mps1)
 
 ## some more tests
 vaccuum =[ComplexF64.(T) for T in deepcopy(fermionic_mps)];
