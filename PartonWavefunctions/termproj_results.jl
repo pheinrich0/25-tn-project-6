@@ -39,6 +39,8 @@ test3 = tn.apply_mpo(test, copymps, Dmax)
 test3[1]
 copymps[1] # copymps is modified when using this function
 
+dk1 = dm_alpha_mpo(1, 1/2, N, A);
+
 ## loop to apply the dm mpos 
 MPS_iter = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 mps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]   # start with the Jordan-Wigner MPS, make sure its datatype is correct
