@@ -57,11 +57,11 @@ unoccupied[1, 2, 1] = 1.0;
 occ = zeros(1, 2, 1);
 occ[1, 1, 1] = 1.0; 
 testmps = [occ, unoccupied]
-check_occupation(testmps)
+#check_occupation(testmps)
 
 res=tn.applyMPO_float(testmps, [P_up, P_down], 100)
 
-check_occupation(res)
+# check_occupation(res)
 # the double occupation gets removed, i guess thats a good sign
 
 # create a L=64 mpo, that has for each odd-even pair P_up and P_down
@@ -103,26 +103,43 @@ function combine_spins_mps(mps::Vector{Array{ComplexF64,3}})
     return new_mps
 end
 
-combine_spins_mps(testmps)[1]
 length(Proj_parton)
 Dmax
+
+#applies the projector to the 2N chain in C^4
 function applyPG_parton(mps::Vector{Array{ComplexF64,3}})
     if length(mps)!= 2*length(Proj_parton)
         error("Length of input mps doesnt match projector")
     end
-    partonmps = combine_spins_mps(mps)
+    return_mps = Vector{Array{ComplexF64,3}}(undef, length(mps))
+    projected4leg = Vector{Array{ComplexF64,4}}(undef, length(mps))
+    partonmps = combine_spins_mps(mps)  # Dx4xD tensors
     projected = tn.applyMPO(partonmps, Proj_parton, Dmax)
-    for i in 1:length(projected)
-        
+    for i in eachindex(projected)
+        projected4leg[i] = tn.contract(projected[i], 2, Id_site, 3, [1,3,4,2]) # Dx2x2xD tensors
+        # do SVD to obtainn two Dx2xD tensors
+        U, S, Vd, _ = tn.svd(projected4leg[i], [1, 2], Nkeep=Dmax)
+        return_mps[2*i-1] = U
+        return_mps[2*i] = tn.contract(Diagonal(S), 2, Vd, 1) # DxD tensors
     end
-    
+
+    return return_mps
+end
+
+# applies the projector using the n1 + n2 - 2*n1*n2 mpo representation
+function applyPG_fermion(mps::Vector{Array{ComplexF64,3}})
+    if length(mps)!= length(Gullwitzer_mpo)
+        error("Length of input mps doesnt match projector")
+    end
+
+    projected = tn.applyMPO(mps, Gullwitzer_mpo, Dmax)
     return projected
 end
 
 ## two ways to apply gullwitzer to 
 @load "PartonWavefunctions/fermiseas.jld2" dk_fermisea wannier_fermisea lmr_fermisea
 
+testcombine = combine_spins_mps(lmr_fermisea)
+applyPG_fermion(lmr_fermisea)
 applyPG_parton(lmr_fermisea)
 
-partonmps = combine_spins_mps(dk_fermisea)
-    projected = tn.applyMPO(partonmps, Proj_parton)

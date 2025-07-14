@@ -51,4 +51,36 @@ end
 #           (with n_j = c†_{jα} c_{jα})
 # ──────────────────────────────────────────────────────────────
 
+using ITensors
+
+"""
+    two_spin_mpo(N, p, q; shift_constant = false)
+
+Return an MPO representing the operator S_p · S_q on an S=1/2 chain
+of length `N`.  Indices `p` and `q` must be different.
+
+Set `shift_constant = true` if you want to include the –¼ identity
+coming from the single-occupancy constraint.
+"""
+function two_spin_mpo(N::Int, p::Int, q::Int; shift_constant::Bool=false)
+    @assert p != q "p and q have to be different sites."
+    @assert 1 ≤ p ≤ N && 1 ≤ q ≤ N "p and/or q out of bounds."
+
+    sites = siteinds("S=1/2", N)          # local physical indices
+    ampo  = AutoMPO()                     # helper that builds MPOs
+
+    # --- Heisenberg form (★) ------------------------------------
+    for op in ("Sx", "Sy", "Sz")
+        # coefficient ¼ because S = σ/2
+        coeff = 0.25
+        push!(ampo, coeff, op, p, op, q)
+    end
+
+    # Optional constant shift –¼ (identity on the two sites)
+    if shift_constant
+        push!(ampo, -0.25, "Id", p, "Id", q)
+    end
+
+    return MPO(ampo, sites)
+end
 
