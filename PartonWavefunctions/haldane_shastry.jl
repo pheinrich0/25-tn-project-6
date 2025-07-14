@@ -51,36 +51,64 @@ end
 #           (with n_j = c†_{jα} c_{jα})
 # ──────────────────────────────────────────────────────────────
 
-using ITensors
+
 
 """
-    two_spin_mpo(N, p, q; shift_constant = false)
+    mpo_SdotS(N, p, q)
 
-Return an MPO representing the operator S_p · S_q on an S=1/2 chain
-of length `N`.  Indices `p` and `q` must be different.
+Return a vector of `Array{ComplexF64,4}` containing an MPO for Sₚ·S_q
+on a spin-½ chain of length `N` (open boundaries).
 
-Set `shift_constant = true` if you want to include the –¼ identity
-coming from the single-occupancy constraint.
 """
-function two_spin_mpo(N::Int, p::Int, q::Int; shift_constant::Bool=false)
-    @assert p != q "p and q have to be different sites."
-    @assert 1 ≤ p ≤ N && 1 ≤ q ≤ N "p and/or q out of bounds."
+function mpo_SdotS(N::Int, p::Int, q::Int)
+    @assert 1 ≤ p < q ≤ N "Require 1 ≤ p < q ≤ N"
 
-    sites = siteinds("S=1/2", N)          # local physical indices
-    ampo  = AutoMPO()                     # helper that builds MPOs
+    # Local operators
+    Sx = ComplexF64[0 1; 1 0]
+    Sy = ComplexF64[0 -im; im 0]
+    Sz = ComplexF64[1 0; 0 -1]
+    Sx, Sy, Sz = 0.25Sx, 0.25Sy, 0.25Sz      # prefactor ¼ absorbed here
+    I₂ = Matrix{ComplexF64}(I,2,2)
 
-    # --- Heisenberg form (★) ------------------------------------
-    for op in ("Sx", "Sy", "Sz")
-        # coefficient ¼ because S = σ/2
-        coeff = 0.25
-        push!(ampo, coeff, op, p, op, q)
+    mpo = Vector{Array{ComplexF64,4}}(undef, N)
+
+    for j in 1:N
+        # Decide bond dimensions for this site
+        leftdim  = (j == 1      || j < p) ? 1 : 5
+        rightdim = (j == N      || j > q) ? 1 :
+                   (j == p      ? 5 :
+                   (j == q      ? 1 : 5))
+
+        W = zeros(ComplexF64, leftdim, rightdim, 2, 2)
+
+        # Convenient helper: write an operator only if indices in range
+        function put!(A, l, r, op)
+            if l ≤ size(A,1) && r ≤ size(A,2)
+                A[l,r,:,:] .= op
+            end
+        end
+
+        # Identity always allowed
+        put!(W, 1, 1, I₂)
+
+        if j == p
+            put!(W, 1, 2, Sx)
+            put!(W, 1, 3, Sy)
+            put!(W, 1, 4, Sz)
+        elseif p < j < q
+            put!(W, 2, 2, I₂)
+            put!(W, 3, 3, I₂)
+            put!(W, 4, 4, I₂)
+        elseif j == q
+            put!(W, 2, 1, Sx)     # closes Sx channel
+            put!(W, 3, 1, Sy)     # closes Sy channel
+            put!(W, 4, 1, Sz)     # closes Sz channel
+        end
+
+        mpo[j] = W
     end
-
-    # Optional constant shift –¼ (identity on the two sites)
-    if shift_constant
-        push!(ampo, -0.25, "Id", p, "Id", q)
-    end
-
-    return MPO(ampo, sites)
+    return mpo
 end
 
+
+## approach via large tensor and qr decomposition.

@@ -1,5 +1,4 @@
-using LinearAlgebra, Plots, JLD2 
-using Dates, Test
+using LinearAlgebra, Plots, JLD2, Dates, Test
 import tn_julia as tn
 # settings 
 N=32;
@@ -13,7 +12,8 @@ Dmax = 100;  # bond dimension cutoff
 include("dm_mpo.jl")
 include("checkoccupation.jl")
 momentaN32 = momenta(32);
-
+n_op_fermion = zeros(1,2,1,2);
+n_op_fermion[1, :, 1, :] = Diagonal([1,0]);
 # generate the matrix containing the coefficients A_m_l = A_m_{j, α}, to construct the mpo for d_{m,α} =  N^(-1/2) ∑_{j=1}^N e^(-i*m*j) c'_{j,α}
 # Matrix of size N x 2N     elements given by (A)_{k, spin}, {l, spin} = N^(-1/2) exp(-i*momenta[k] * l) if either both row and column index are even or both odd, else zero
 # d_m (alpha) has only nonzero contributions in the length 2N mps for indices, where the spin matches alpha (either up or down)
@@ -32,47 +32,62 @@ for k in 1:Int(N/2) # iterator over momenta "rows*1/2"
     end
 end
 
-A[1,3]
-copymps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
-test = dm_alpha_mpo(1, 1/2, 32, A)
-test3 = tn.apply_mpo(test, copymps, Dmax)
-test3[1]
-copymps[1] # copymps is modified when using this function
 
-dk1 = dm_alpha_mpo(1, 1/2, N, A);
 
-## loop to apply the dm mpos 
+## ## ## loop to apply the dm mpos 
+
+# ## AFTER EACH STEP: NORMALIZE THE MPS
+# ## REMARK: the output of applyMPO is in rightcanonical form, ie. all tensors except the first one in the list are already in canonical form, 
+# ## to normalize it is thus correct to only add the factor 1/N to the first tensor
+# ## ## 
 MPS_iter = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 mps = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]   # start with the Jordan-Wigner MPS, make sure its datatype is correct
-
+norm_list = [];
 for itN in 1:length(momentaN32)
     for alpha in [1/2, -1/2]  # alpha = 0 for spin up, 1 for spin down
         mpo_dk_k = dm_alpha_mpo(itN, alpha, N, A)
         mps = tn.applyMPO(mps, mpo_dk_k, Dmax)
+        norm = sqrt(real(tn.mps_product(mps, mps)))
+        push!(norm_list, norm)
         if alpha==1/2   # spin up -> odd row index
             MPS_iter[(2*itN-1), :] = mps
         else    # spin down -> even row index
             MPS_iter[2*itN, :] = mps
         end
-        println("Iteration $alpha for k = $itN completed.", " Time: ", now())
+        println("Iteration $alpha for k = $itN completed, Norm decreased to", norm)
     end
 end
 
-for i in eachindex(mps)
-    print(size(mps[i]))
+# test how renorm works in julialang
+testtensor = deepcopy(MPS_iter[20, :]);
+scale1 = 1/norm_list[20]
+
+testtensor[1]*=scale1
+testtensor[1]
+tn.mps_product(testtensor, testtensor)
+# this is the optimal, way since only the first tensor in the list is not canonical
+
+# before continuing calculation, normalize the MPS in MPS_iter
+# Normalize the MPS in MPS_iter using the computed norms
+MPS_iter_Norm = deepcopy(MPS_iter);
+for i in 1:size(MPS_iter, 1)
+    # norm_list[i] = √⟨ψ_i|ψ_i⟩, so divide to get renorm factor
+    scale = 1/norm_list[i]
+    MPS_iter_Norm[i,1] *=scale
+    println("Check for success step $i , norm = ", sqrt(real(tn.mps_product(MPS_iter_Norm[i,:], MPS_iter_Norm[i,:]))))
 end
 
 #create list of mps for single occupation mps, ie. 32x64 matrix of mps tensor
 dk_singleOccStates = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 vac = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]  
 # check whether the |0> state is normalized
-println("contracting <0|0> gives: ", tn.mps_product(vac, vac))
+println("contracting <0|0> gives: ", sqrt(tn.mps_product(vac, vac)))
 
 for itN in 1:length(momentaN32)
     for alpha in [1/2, -1/2]  # alpha = 0 for spin up, 1 for spin down
         mpo_dk_k = dm_alpha_mpo(itN, alpha, N, A)
         varmps = tn.applyMPO(vac, mpo_dk_k, Dmax)
-        println("for j=$itN α=$alpha contract <0|dk dk'|0> gives: ", tn.mps_product(varmps, varmps))
+        println("for j=$itN α=$alpha contract <0|dk dk'|0> gives: ", sqrt(real(tn.mps_product(varmps, varmps))))
         println("the occupation number is: ", check_occupation(varmps))
         if alpha==1/2   # spin up -> odd row index
             dk_singleOccStates[(2*itN-1), :] = varmps
@@ -90,13 +105,8 @@ mpo_dk_k = dm_alpha_mpo(5, 1/2, N, A)[10][2,1,1,2]==A[9,10]
 mpo_dk_k = dm_alpha_mpo(5, -1/2, N, A)[10][2,1,1,2]==A[10,10]
 
 ## cross check with occupation number after each dm application  
-
-n_op_fermion = zeros(1,2,1,2);
-n_op_fermion[1, :, 1, :] = Diagonal([1,0]);
-
-
 # Store occupation numbers for each MPS in MPS_iter
-occ_vals = zeros(length(MPS_iter) ÷ size(MPS_iter, 2))
+occ_vals = zeros(length(MPS_iter) ÷ size(MPS_iter, 2));
 for i in 1:length(occ_vals)
     occ_val = check_occupation(MPS_iter[i, :])
     occ_vals[i] = real(occ_val)  # Discard small imaginary part due to numerical error
@@ -105,6 +115,11 @@ end
 # Plot the occupation numbers
 plotOccN_standard = plot(occ_vals, xlabel="State index", ylabel="Occupation number", title="Occupation Number per State", legend=false)
 
+# for mpo application you would have for the renormalized state <ψ| M |ψ>1/N^2
+# check how the occ numbers would look for a properly normalized state
+occ_vals .* (1 ./ (norm_list .^ 2))
+plot(occ_vals .* (1 ./ (norm_list .^ 2)), xlabel="State index", ylabel="Occupation number (normalized)", title="Normalized Occupation Number per State", legend=false)
+
 # for the fermi sea, also plot the local occupation at each chain site
 # Plot the local occupation at each chain site for the Fermi sea MPS
 local_occ = zeros(2N)
@@ -112,10 +127,10 @@ for i in 1:length(local_occ)
     local_occ[i] = real(check_localoccupation(MPS_iter[end,:], i))  # Discard small imaginary part due to numerical error
 end
 
-pLocalOccFermisea = plot(1:2N, local_occ, xlabel="Site ℓ", ylabel="n_ℓ", title="Local occupation per site (Fermi sea)", legend=false, framestyle=:box)
+pLocalOccFermisea = plot(1:2N, local_occ, xlabel="Site", ylabel="Local occupation", title="Local occupation per site (Fermi sea)", legend=false)
 sum(local_occ)
 
-## function for entanglement_entropy
+# ## ## function for entanglement_entropy
 include("entanglementEntropy.jl")
 
 @show length(MPS_iter[1,:])
@@ -126,17 +141,27 @@ for i in 1:length(ee_vals)
     ee_val = entanglement_entropy(MPS_iter[i, :], 32)
     ee_vals[i] = real(ee_val)  # Discard small imaginary part due to numerical error
 end
-# errors occur for some stupid reason for later -> fixed by using solution for bondcanonical
 
-# Plot the ee
-pEE_standard = plot(ee_vals, xlabel="Iteration", ylabel="Entanglement entropy", title="Entanglement entropy in the center", legend=false)
+# ###########################################################################
+##              UPDATE: EE with normalized MPS                              #
+# ###########################################################################
+ee_vals2 = zeros(length(MPS_iter) ÷ size(MPS_iter, 2));
+for i in eachindex(ee_vals2)
+    ee_val = entanglement_entropy(MPS_iter_Norm[i, :], 32)
+    ee_vals2[i] = real(ee_val)  # Discard small imaginary part due to numerical error
+end
+plot(ee_vals2)
 
 
-## b) Wannier Orbitals: ToDo: Diagonalize the matrix given by 
-# function X_mpo(L) returns a mpo for the position operator for this system:
+
+# ###########################################################################
+##              b) Wannier Orbitals: ToDo:                                  #
+# ###########################################################################
+
+#Diagonalize the matrix given by function X_mpo(L) returns a mpo for the position operator for this system:
 # L=64
 include("positionOperatorMPO.jl")
-x_op64 = position_mpo(64)
+x_op64 = position_mpo(64);
 
 # generate the 32x32 matrix containing  Xtilde[m,n] = ⟨0| d_m_alpha X (d_n_alpha)† |0⟩
 # the expectation value can be calculated using the function mpo expectation, the mps for d_m_alpha |0> are generated with applyMPO
@@ -161,11 +186,6 @@ for itN in 1:length(momentaN32)
     end
 end
 
-# double check wether construction is right, Conclusion: yes
-@test Xtilde[3,5] ≈ tn.mpo_transition(x_op64, dk_singleOccStates[3,:], dk_singleOccStates[5,:])
-@test Xtilde[22,31] ≈ tn.mpo_transition(x_op64, dk_singleOccStates[22,:], dk_singleOccStates[31,:])
-
-
 # Compute all Xtilde matrix elements by looping over single-occupation MPS states
 XtildeCompare = zeros(ComplexF64, 32, 32)
 for i in 1:size(dk_singleOccStates, 1)
@@ -179,7 +199,7 @@ XtildeCompare ≈ Xtilde
 # taking complex conjugate: (X̃_mn)^* =  X̃_nm
 # since X is hermitian ⟨0|(d_m X d_n')'|0⟩ = ⟨0| d_n * X' * d_m' |0⟩ = ⟨0| d_n * X * d_m† |0⟩
 # → ie. the matrix X_tilde is hermitian → we expect real eigenvalues
-eigvals, B = eigen(Xtilde)#
+eigvals, B = eigen(Xtilde)
 
 eigvals[end]
 pWanniereigvals = scatter(1:length(eigvals), real(eigvals);
@@ -188,12 +208,7 @@ pWanniereigvals = scatter(1:length(eigvals), real(eigvals);
     title="Eigenvalues of Position Operator",
     label="Eigenvalues")
 
-@testset
-for j in 1:size(B, 2)
-    print(@test B[:,j]' * Xtilde * B[:,j] ≈ eigvals[j])
-end
 
-eigvals
 # since the function for dm_alpha_mpo takes the matrix A as an input and then dm_alpha is determined by the m_alpha'th row of a
 # we can simply pass the matrix B^T A since
  # ζ_r† = ∑_ℓ (Bᵀ * A)[r, ℓ] * c_ℓ†
@@ -202,25 +217,32 @@ eigvals
 # calculate B^T * A and check dimensions
 # calculate B^T * A and check dimensions
 transpose(B)[1,:]==B[:,1]
+
+## ## ### ##
 BT_A = transpose(B) * A
+## ## ### ##
+
+
 @test size(BT_A) == size(A) 
 
 ## now do the same loop applying the dks with truncation as for A
 # Initialize storage and starting MPS for BT_A
 MPS_iter_wannier = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 mps_wannier = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
+normlist_wannier = [];
 
 # Apply dm_alpha_mpo with BT_A coefficients
 for itN in 1:length(momentaN32)
     for alpha in (1/2, -1/2)
         mpo_dk_wannier = dm_alpha_mpo(itN, alpha, N, BT_A)
         mps_wannier = tn.applyMPO(mps_wannier, mpo_dk_wannier, Dmax)
+        push!(normlist_wannier, sqrt(real(tn.mps_product(mps_wannier, mps_wannier))))
         if alpha==1/2   # spin up -> odd row index
             MPS_iter_wannier[(2*itN-1), :] = mps_wannier
         else    # spin down -> even row index
             MPS_iter_wannier[2*itN, :] = mps_wannier
         end
-        println("Iteration $alpha for k = $itN completed.", " Time: ", now())
+        println("Iteration $alpha for k = $itN completed. Norm after trunc.: " , normlist_wannier[itN])
     end
 end
 
@@ -276,19 +298,9 @@ for i in 1:length(ee_vals_BT)
     ee_vals_BT[i] = real(entanglement_entropy(MPS_iter_wannier[i, :], N))
     println("E.e. after application #$i ", ee_vals_BT[i])
 end
-# Plot the entanglement entropy for BT_A
-pWannierEE =plot(ee_vals_BT,
-     xlabel="Iteration",
-     ylabel="Entanglement entropy",
-     title="Entanglement entropy in the center; Wannier Orbitals",
-     legend=false)
 
 
-# Combined plot of entanglement entropy for Standard vs Wannier Orbitals
-pCombined = plot(ee_vals, label="Standard", xlabel="Iteration", ylabel="Entanglement entropy", title="Entanglement entropy comparison")
-plot!(pCombined, ee_vals_BT, label="Wannier Orbitals")
-
-# check whether the wannier states are correctly normalized and are eigenstates of 
+# check whether the single excitation wannier states are correctly normalized and are eigenstates of pos. operator
 wannierStates = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
 vac = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]  
 xExpVal  = [];
@@ -309,22 +321,19 @@ for itN in 1:length(momentaN32)
         end
     end
 end
-xExpVal
 
 pxExpVal = scatter(1:length(xExpVal), real(xExpVal);
     marker=:circle, markersize=6, color=:blue,
     xlabel="# wannier mps", ylabel="<X>",
     title="Exp. value of Position Operator",
     label="expVal")
-# check whether different wannier states are orthogonal
-tn.mps_product(wannierStates[1,:], wannierStates[2,:]) # is zero
-tn.mps_product(wannierStates[9,:], wannierStates[23,:]) # is zero
+# check whether different wannier states are orthogonal also worked
 
 # ## ## Conclusion: The expectation values do resemble the eigenvalues, but the ordering seems to be off.
 
 
 # ## ## Show how the Wannier states look like in terms of local occupation
-local_occWannier3 = zeros(2N)
+local_occWannier3 = zeros(2N);
 for i in 1:length(local_occWannier)
     local_occWannier3[i] = real(check_localoccupation(wannierStates[15,:], i))  # Discard small imaginary part due to numerical error
 end
@@ -345,78 +354,30 @@ plot(
     titlefont=font(14)
 )
 sum(local_occWannier3)
-
-# other approach to try to get the correct expvalues from wannier construction
-function wannier(r::Int)
-    # r is the index of the Wannier-orbital
-    # B is the matrix of eigenvectors of Xtilde
-    # The Wannier function is given by the r-th column of B
-    W_r = Vector{Array{ComplexF64,4}}(undef, 2N)
-    F, Z, Id = tn.spinlessfermionlocalspace()
-    # loop combined indices l = j,alpha
-    for itL in 1:2N
-        # choose correct tensor shape
-        if itL == 1
-            dims = (1, 2, 2, 2)
-            W_L = zeros(ComplexF64, dims...)
-            W_L[1, :, 1, :] = F* transpose(B[:,r])* A[:, itL] # sum over m, α
-            W_L[1, :, 2, :] = Z
-        elseif itL == 2N
-            dims = (2, 2, 1, 2)
-            W_L = zeros(ComplexF64, dims...)
-            W_L[1, :, 1, :] = Id
-            W_L[2, :, 1, :] = F*transpose(B[:,r])* A[:, itL]
-        else
-            dims = (2, 2, 2, 2)
-            W_L = zeros(ComplexF64, dims...)
-            W_L[1, :, 1, :] = Id
-            W_L[2, :, 1, :] = F*transpose(B[:,r])* A[:, itL]
-            W_L[2, :, 2, :] = Z          
-        end
-        W_r[itL] = W_L
-    end
-    return W_r
-end
-
-transpose(B)[1,:]==B[:,1]
-transpose(B[:,1]) # row vector
-transpose(B[:,1])* A[:, 2]
-BT_A[1,2] # should be equal to the first element of the first row of BT_A
-# Test whether simply passing BT_A works
-
-# Test: dm_alpha_mpo ≈ wannier for k=1:maxk
-
-@testset "dm_alpha_mpo ≈ wannier for k=1:32" begin
-    for k in 1:32
-        itN, alpha = getSiteSpinIndex(k)
-        mpo_k = dm_alpha_mpo(itN, alpha, N, BT_A)
-        w_k   = wannier(k)
-        @test mpo_k ≈ w_k
-        end
-end
-
-savedstates = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
-expVals2 = []
-for itN in 1:2*length(momentaN32)
-
-        mpo_dk_k = wannier(itN)
-        varmps = tn.applyMPO(vac, mpo_dk_k, Dmax)
-        println("for j=$itN contract <0|dk dk'|0> gives: ", tn.mps_product(varmps, varmps))
-        println("the occupation number is: ", check_occupation(varmps))
-        expVal = tn.mpo_expectation(x_op64, varmps)
-        println("The position operator exp. value is ", expVal)
-        push!(expVals2, expVal)
-        savedstates[itN, :] = varmps
-end
-expVals2
-plot(expVals2)
-
-savedstates[1,:][1]
-
-wannierStates[1,:][1]
 # these do agree
 # the reason why the eigenvalues cant be properly reproduced doesnt make sense
 
+# ###########################################################################
+##              UPDATE: EE with normalized MPS                              #
+# ###########################################################################
+MPS_wannier_Norm = deepcopy(MPS_iter_wannier);
+for i in 1:size(MPS_iter_wannier, 1)
+    # norm_list[i] = √⟨ψ_i|ψ_i⟩, so divide to get renorm factor
+    scale = 1/normlist_wannier[i]
+    MPS_wannier_Norm[i,1] *=scale
+    println("Check for success step $i , norm = ", sqrt(real(tn.mps_product(MPS_wannier_Norm[i,:], MPS_wannier_Norm[i,:]))))
+end
+
+ee_vals_wannier2 = zeros(length(MPS_wannier_Norm) ÷ size(MPS_wannier_Norm, 2));
+for i in eachindex(ee_vals_wannier2)
+    ee_val = entanglement_entropy(MPS_wannier_Norm[i, :], 32)
+    ee_vals_wannier2[i] = real(ee_val)  # Discard small imaginary part due to numerical error
+end
+plot(ee_vals_wannier2)
+
+# for mpo application you would have for the renormalized state <ψ| M |ψ>1/N^2
+# check how the occ numbers would look for a properly normalized state
+plot(occ_vals_wannier .* (1 ./ (normlist_wannier .^ 2)), xlabel="State index", ylabel="Occupation number (normalized)", title="Normalized Occupation Number per State", legend=false)
 
 # ###############################################################################
 # #                                                                             #
@@ -428,21 +389,21 @@ wannierStates[1,:][1]
 # Generate alternating index order: first, last, second, second-last, ...
 
 # Build flattened list of (itN, alpha) pairs in j-up, j-down order
-flat_pairs = [(itN, alpha) for itN in 1:length(momentaN32) for alpha in (1/2, -1/2)]
+flat_pairs = [(itN, alpha) for itN in 1:length(momentaN32) for alpha in (1/2, -1/2)];
 L = length(flat_pairs)
-order = Int[]
+order = Int[];
 for k in 1:ceil(Int, L/2)
     push!(order, k)
     if k != L - k + 1
         push!(order, L - k + 1)
     end
 end
-order
 
-MPS_iter_LmeetsR = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N)
-mps_LmeetsR = [ComplexF64.(T) for T in deepcopy(fermionic_mps)]
+MPS_iter_LmeetsR = Array{Array{ComplexF64, 3}, 2}(undef, 2 * length(momentaN32), 2N);
+mps_LmeetsR = [ComplexF64.(T) for T in deepcopy(fermionic_mps)];
+normlist_lmr=[];
 
-n=1
+n=1;
 for idx in 1:32
     itN, alpha = flat_pairs[order[idx]]
     mpo_dk = dm_alpha_mpo(itN, alpha, N, BT_A)
@@ -452,38 +413,52 @@ for idx in 1:32
     else
         mps_LmeetsR = tn.applyMPO(mps_LmeetsR, mpo_dk, 100) # had to use DMax=101 to avoid lapackerror wtf wtf bro fuck programming......
     end        # Store to the correct row: up -> odd, down -> even
+    push!(normlist_lmr, sqrt(real(tn.mps_product(mps_LmeetsR, mps_LmeetsR))))
     MPS_iter_LmeetsR[idx, :] = mps_LmeetsR
-    println("Iteration $n for s=$alpha, k = $itN completed.", " Time: ", now())
+    println("Iteration $n for s=$alpha, k = $itN completed.", " Norm ", normlist_lmr[idx])
     n=n+1
 end
 
 
 # also plot occupation, and entanglement_entropy
-occ_vals_LmR = zeros(size(MPS_iter_LmeetsR, 1))
+occ_vals_LmR = zeros(size(MPS_iter_LmeetsR, 1));
 for i in 1:length(occ_vals_LmR)
     occ_vals_LmR[i] = real(check_occupation(MPS_iter_LmeetsR[i, :]))
     println("Occupation after application #$i ", occ_vals_LmR[i])
 end
 
-# Plot the occupation numbers for left meets right
-pOccNLeftMeetsRight = plot(occ_vals_LmR,
-     xlabel="State index",
-     ylabel="Occupation number",
-     title="Occupation Number per State; Left meets Right",
-     legend=false)
-
 # Compute entanglement entropy for each state
-ee_vals_LmR = zeros(size(MPS_iter_LmeetsR, 1))
+ee_vals_LmR = zeros(size(MPS_iter_LmeetsR, 1));
 for i in 1:length(ee_vals_LmR)
     ee_vals_LmR[i] = real(entanglement_entropy(MPS_iter_LmeetsR[i, :], N))
     println("E.e. after application #$i ", ee_vals_LmR[i])
 end
-# Plot the entanglement entropy for BT_A
-pLmR =plot(ee_vals_LmR,
-     xlabel="Iteration",
-     ylabel="Entanglement entropy",
-     title="Entanglement entropy in the center; Left meets right",
-     legend=false)
+
+
+# ###########################################################################
+##              UPDATE: EE with normalized MPS                              #
+# ###########################################################################
+normMPS_lmr = deepcopy(MPS_iter_LmeetsR);
+for i in 1:size(normMPS_lmr, 1)
+    # norm_list[i] = √⟨ψ_i|ψ_i⟩, so divide to get renorm factor
+    scale = 1/normlist_lmr[i]
+    normMPS_lmr[i,1] *=scale
+    println("Check for success step $i , norm = ", sqrt(real(tn.mps_product(normMPS_lmr[i,:], normMPS_lmr[i,:]))))
+end
+
+ee_LMR2 = zeros(length(normMPS_lmr) ÷ size(normMPS_lmr, 2));
+for i in eachindex(ee_LMR2)
+    ee_val = entanglement_entropy(normMPS_lmr[i, :], 32)
+    ee_LMR2[i] = real(ee_val)  # Discard small imaginary part due to numerical error
+end
+plot(ee_LMR2)
+
+# for mpo application you would have for the renormalized state <ψ| M |ψ>1/N^2
+# check how the occ numbers would look for a properly normalized state
+occ_vals .* (1 ./ (norm_list .^ 2))
+plot(occ_vals .* (1 ./ (norm_list .^ 2)), xlabel="State index", ylabel="Occupation number (normalized)", title="Normalized Occupation Number per State", legend=false)
+
+
 
 # ## ## RESULT: SAVE DIFFERENT FERMI savedstates
 dk_fermisea = MPS_iter[end,:];
@@ -491,32 +466,26 @@ wannier_fermisea = MPS_iter_wannier[end, :];
 lmr_fermisea = MPS_iter_LmeetsR[end,:];
 @save "PartonWavefunctions/fermiseas.jld2" dk_fermisea wannier_fermisea lmr_fermisea
 
+
+# ## ###########################################
+#                                              #
+# ##            PLOTS                        # #
+#                                              #
+# ## ###########################################
+
+
 # Combined plot of entanglement entropy for Standard, Wannier, and Left meets right
 pCombined = plot(
-    ee_vals,
+    ee_vals2,
     label="Standard",
     xlabel="Iteration",
     ylabel="Entanglement entropy",
-    title="Entanglement entropy comparison",
+    title="Entanglement E.; Formalized Fermi Seas",
     framestyle=:box,
     linewidth=2.5
-);
-plot!(pCombined, ee_vals_BT, linewidth =2.5,label="Wannier Orbitals");
-plot!(pCombined, ee_vals_LmR, linewidth =2.5, label="Left meets right")
+)
+plot!(pCombined, ee_vals_wannier2, linewidth =2.5,label="Wannier Orbitals")
+plot!(pCombined, ee_LMR2, linewidth =2.5, label="Left meets right")
 
 # Combined plot of occupation numbers for Standard, Wannier, and Left meets Right
-pOccCombined = plot(
-    occ_vals,
-    framestyle=:box,
-    linewidth=1.5,
-    label="Standard",
-    xlabel="Iteration",
-    ylabel="Occupation number",
-    title="Occupation Number Comparison",
-    aspect_ratio=:equal,
-    xlims=(0, 35),
-    size=(800, 500)
-);
-plot!(pOccCombined, occ_vals_wannier, linewidth=1.5, label="Wannier Orbitals");
-plot!(pOccCombined, occ_vals_LmR, linewidth=1.5, label="Left meets right")
-display(pOccCombined)
+# with renorm all look the same

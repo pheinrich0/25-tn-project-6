@@ -70,6 +70,7 @@ res=tn.applyMPO_float(testmps, [P_up, P_down, P_up, P_down], 100)
 check_occupation([ComplexF64.(T) for T in res])
 
 # the double occupation gets removed, i guess thats a good sign
+# any mps that contain the wrong occupation combinations are set to zero which is good
 
 # create a L=64 mpo, that has for each odd-even pair P_up and P_down
 gutzwiller_mpo = Vector{Array{ComplexF64,4}}(undef, 2N)
@@ -133,25 +134,42 @@ function applyPG_parton(mps::Vector{Array{ComplexF64,3}})
     return return_mps
 end
 
-# applies the projector using the n1 + n2 - 2*n1*n2 mpo representation
+# applies the projector using the n1 + n2 - 2*n1*n2 mpo representation, after applying the projector, the mps is normalized
 function applyPG_fermion(mps::Vector{Array{ComplexF64,3}})
     if length(mps)!= length(gutzwiller_mpo)
         error("Length of input mps doesnt match projector")
     end
 
     projected = tn.applyMPO(mps, gutzwiller_mpo, Dmax)
+    norm= sqrt(real(tn.mps_product(projected, projected)))
+    println("Norm of projected MPS: ", norm)
+    if norm == 0
+        error("Norm of projected MPS is zero, cannot normalize.")
+    end
     return projected
 end
 
 ## two ways to apply gutzwiller to 
 @load "PartonWavefunctions/fermiseas.jld2" dk_fermisea wannier_fermisea lmr_fermisea
 check_occupation(dk_fermisea)
+check_occupation(lmr_fermisea)
 
-testcombine = combine_spins_mps(deepcopy(lmr_fermisea))
-testpfermion = applyPG_fermion(deepcopy(lmr_fermisea))
-check_occupation(testpfermion)
-testpparton = applyPG_parton(deepcopy(lmr_fermisea))
-check_occupation(testpparton)
+
+## function that returns the mps in normalized form
+function applyPG_fermion_Normalized(mps::Vector{Array{ComplexF64,3}})
+    if length(mps)!= length(gutzwiller_mpo)
+        error("Length of input mps doesnt match projector")
+    end
+
+    projected = tn.applyMPO(mps, gutzwiller_mpo, Dmax)
+    norm= sqrt(real(tn.mps_product(projected, projected)))
+    println("Norm of projected MPS: ", norm)
+    if norm == 0
+        error("Norm of projected MPS is zero, cannot normalize.")
+    end
+    return projected
+end
+
 
 ## some more tests
 vaccuum =[ComplexF64.(T) for T in deepcopy(fermionic_mps)];
@@ -166,3 +184,8 @@ I2 = Matrix{Int}(I, 2, 2)
 P2 = kron(n, I2 - n) + kron(I2 - n, n)
 
 @show P2
+dims = 3*N*(N-1)
+MPO = [Array{ComplexF64,4}(undef, dims, 2, dims, 2) for _ in 1:2N]
+
+size(MPO[1])
+
