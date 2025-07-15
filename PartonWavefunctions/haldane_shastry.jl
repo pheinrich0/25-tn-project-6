@@ -68,7 +68,7 @@ function mpo_SdotS(N::Int, p::Int, q::Int)
     Sy = ComplexF64[0 -im; im 0]
     Sz = ComplexF64[1 0; 0 -1]
     Sx, Sy, Sz = 0.25Sx, 0.25Sy, 0.25Sz      # prefactor ¼ absorbed here
-    I₂ = Matrix{ComplexF64}(I,2,2)
+    I2 = Matrix{ComplexF64}(I,2,2)
 
     mpo = Vector{Array{ComplexF64,4}}(undef, N)
 
@@ -89,16 +89,16 @@ function mpo_SdotS(N::Int, p::Int, q::Int)
         end
 
         # Identity always allowed
-        put!(W, 1, 1, I₂)
+        put!(W, 1, 1, I2)
 
         if j == p
             put!(W, 1, 2, Sx)
             put!(W, 1, 3, Sy)
             put!(W, 1, 4, Sz)
         elseif p < j < q
-            put!(W, 2, 2, I₂)
-            put!(W, 3, 3, I₂)
-            put!(W, 4, 4, I₂)
+            put!(W, 2, 2, I2)
+            put!(W, 3, 3, I2)
+            put!(W, 4, 4, I2)
         elseif j == q
             put!(W, 2, 1, Sx)     # closes Sx channel
             put!(W, 3, 1, Sy)     # closes Sy channel
@@ -110,5 +110,21 @@ function mpo_SdotS(N::Int, p::Int, q::Int)
     return mpo
 end
 
-
-## approach via large tensor and qr decomposition.
+function SpSq_MPO(p::Int, q::Int)
+    result = Vector{Array{ComplexF64,4}}(undef, 2N)
+    Ts = []
+    push!(Ts, T1_pq(p, q))
+    push!(Ts, T2_pq(p, q))
+    push!(Ts, N_pq_ab(p, q, 0, 0))
+    push!(Ts, N_pq_ab(p, q, 0, 1))
+    push!(Ts, N_pq_ab(p, q, 1, 0))
+    push!(Ts, N_pq_ab(p, q, 1, 1))
+    for l in 1:2N
+        for i in 1:6
+            result[l][i,:,i,:] = Ts[i]
+        end
+    end
+    result[1] = contract(ones(ComplexF64, 1, 6), [2], result[1], [1])
+    result[end] = permutedims(contract(result[end], [3], ones(ComplexF64, 1, 6), [2]), (1,2,4,3))
+    return result
+end

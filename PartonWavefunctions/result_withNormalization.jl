@@ -453,11 +453,11 @@ for i in eachindex(ee_LMR2)
 end
 plot(ee_LMR2)
 
-# for mpo application you would have for the renormalized state <ψ| M |ψ>1/N^2
-# check how the occ numbers would look for a properly normalized state
-occ_vals .* (1 ./ (norm_list .^ 2))
-plot(occ_vals .* (1 ./ (norm_list .^ 2)), xlabel="State index", ylabel="Occupation number (normalized)", title="Normalized Occupation Number per State", legend=false)
-
+for i in 1:length(local_occ)
+    local_occ[i] = real(check_localoccupation(normMPS_lmr[end,:], i))  # Discard small imaginary part due to numerical error
+end
+sum(local_occ)
+pLocalOccFermisea = plot(1:2N, local_occ, xlabel="Site", ylabel="Local occupation", title="Local occupation per site (Fermi sea)", legend=false)
 
 
 # ## ## RESULT: SAVE DIFFERENT FERMI savedstates
@@ -465,6 +465,8 @@ dk_fermisea = MPS_iter[end,:];
 wannier_fermisea = MPS_iter_wannier[end, :];
 lmr_fermisea = MPS_iter_LmeetsR[end,:];
 @save "PartonWavefunctions/fermiseas.jld2" dk_fermisea wannier_fermisea lmr_fermisea
+
+@save "PartonWavefunctions/NormalizedMPS.jld2" MPS_iter_Norm MPS_wannier_Norm normMPS_lmr
 
 
 # ## ###########################################

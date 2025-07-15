@@ -79,7 +79,6 @@ for i in 1:32
     gutzwiller_mpo[2*i] = P_down
 end
 
-@save "PartonWavefunctions/gutzwillerProj.jld2" Proj_parton gutzwiller_mpo
 
 
 
@@ -168,10 +167,13 @@ function applyPG_fermion_Normalized(mps::Vector{Array{ComplexF64,3}})
         error("Norm of projected MPS is zero, cannot normalize.")
     end
     projected[1]*=1/norm
-    return projected
+    return projected, norm
 end
 
-mps1 = applyPG_fermion_Normalized(lmr_fermisea)
+@save "PartonWavefunctions/gutzwillerProj.jld2" gutzwiller_mpo applyPG_fermion_Normalized
+
+mps1, norm1 = applyPG_fermion_Normalized(lmr_fermisea)
+norm1
 tn.mps_product(mps1, mps1)
 
 check_occupation(mps1)

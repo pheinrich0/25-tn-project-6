@@ -485,6 +485,7 @@ pLmR =plot(ee_vals_LmR,
      title="Entanglement entropy in the center; Left meets right",
      legend=false)
 
+     
 # ## ## RESULT: SAVE DIFFERENT FERMI savedstates
 dk_fermisea = MPS_iter[end,:];
 wannier_fermisea = MPS_iter_wannier[end, :];
